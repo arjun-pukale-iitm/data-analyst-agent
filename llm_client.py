@@ -1,6 +1,9 @@
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+from google.generativeai.types import content_types
+from typing import List, Dict, Any
+
 
 load_dotenv()
 
@@ -15,7 +18,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-2.5-flash") # very good results. but a bit slower
 #model = genai.GenerativeModel("gemini-2.5-pro")
 
-def call_llm(messages: list) -> str:
+def call_llm(messages: list, attachments: List[Dict[str, Any]] = None) -> str:
     """
     Call Gemini model with a conversation-style message list.
     messages: [
@@ -23,8 +26,24 @@ def call_llm(messages: list) -> str:
         {"role": "user", "content": "Tell me a joke."}
     ]
     """
+    parts = []
     # Gemini does not have role awareness like OpenAI; we format the prompt ourselves
-    prompt = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in messages])
+    prompt_text = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in messages])
+    parts.append({"text": prompt_text})
+    # Add image attachments if present
+    if attachments:
+        for att in attachments:
+            if att.get("is_image"):
+                # Add image as inline input
+                parts.append(
+                    {
+                        "inline_data": {
+                            "mime_type": att["content_type"],
+                            "data": att["content_bytes"]
+                        }
+                    }
+                )
 
-    response = model.generate_content(prompt)
+
+    response = model.generate_content(parts)
     return response.text.strip()

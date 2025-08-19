@@ -2,6 +2,8 @@ from llm_client import call_llm
 from executor import execute_code
 from utils import extract_python_code, format_metadata_list, fix_code_with_llm, summarize_attachments_for_llm, load_allowed_packages
 import json
+from typing import List, Dict, Any
+
 
 def scraping_required(task: str, attachment_info: str) -> bool:
     # Load system instructions
@@ -30,7 +32,7 @@ The user has also provided the following files:
 
 
 
-def generate_metadata_extraction_code(task: str, attachment_info: str) -> str:
+def generate_metadata_extraction_code(task: str, attachment_info: str, attachments:List[Dict[str, Any]]) -> str:
     # Load instructions from prompt file
     with open("prompts/extract_metadata.txt", "r") as f:
         instructions = f.read()
@@ -53,11 +55,11 @@ def generate_metadata_extraction_code(task: str, attachment_info: str) -> str:
             )
         }
     ]
-    return call_llm(messages)
+    return call_llm(messages, attachments)
 
 
 
-def generate_solution_code(task: str, metadata_list: list, attachment_info: str) -> str:
+def generate_solution_code(task: str, metadata_list: list, attachment_info: str, attachments:List[Dict[str, Any]]) -> str:
     """
     Use the task + optional metadata list to prompt the LLM to generate final solving code
     """
@@ -122,7 +124,7 @@ You are a data analysis expert. Generate Python code to solve the following data
 
 
 
-    return call_llm(messages)
+    return call_llm(messages, attachments)
 
 
 
@@ -133,7 +135,7 @@ def run_pipeline(task: str, log, attachments):
 
     
     # Step 1: Generate and execute metadata code
-    metadata_code = extract_python_code(generate_metadata_extraction_code(task, attachment_info), True)
+    metadata_code = extract_python_code(generate_metadata_extraction_code(task, attachment_info, attachments), True)
     log("\n--- Metadata Code ---\n"+ metadata_code)
     try:
         meta_env = execute_code(metadata_code)
@@ -147,7 +149,7 @@ def run_pipeline(task: str, log, attachments):
 
     
     # Step 2: Ask LLM to generate the final code using task + metadata (if any)
-    final_code = extract_python_code(generate_solution_code(task, metadata_list, attachment_info), True)
+    final_code = extract_python_code(generate_solution_code(task, metadata_list, attachment_info, attachments), True)
     log("\n--- Initial Generated Code ---\n"+ final_code)
     MAX_RETRIES = 7
     result = json.dumps({}) # empty result json

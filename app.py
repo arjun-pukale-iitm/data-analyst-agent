@@ -63,26 +63,32 @@ def save_to_tempfile(upload: UploadFile) -> str:
 def process_attachments(files: List[UploadFile]) -> List[Dict[str, Any]]:
     attachments = []
     for f in files:
-        # Read full content
         contents = f.file.read()
-
-        # Always save to temp file
         tmp_path = save_to_tempfile(f)
 
-        attachments.append({
+        att = {
             "filename": f.filename,
             "content_bytes": contents,
             "content_type": f.content_type,
             "tmp_path": tmp_path,
-        })
+        }
 
-        # Reset file pointer in case something else needs to read UploadFile later
+        # Identify if image
+        if f.content_type.startswith("image/"):
+            att["is_image"] = True
+        else:
+            att["is_image"] = False
+
+        attachments.append(att)
+
+        # Reset file pointer
         try:
             f.file.seek(0)
         except Exception:
             pass
 
     return attachments
+
 
 
 
